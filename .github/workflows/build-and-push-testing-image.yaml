@@ -1,10 +1,8 @@
-name: Upload testing image to ECR
+name: Build and push testing image to ECR
 
 on:
   push:
     branches:
-      - main
-    paths:
       - '*'
   workflow_dispatch:
     branches:
@@ -15,7 +13,7 @@ env:
 
 jobs:
   push-testing-image:
-    name: Push testing image to ECR
+    name: Build and push testing image to ECR
     permissions:
       id-token: write
       contents: read
