@@ -1,0 +1,45 @@
+name: Upload testing image to ECR
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    branches:
+      - BTM-307-run-tests-in-pipeline
+
+env:
+  AWS_REGION: eu-west-2
+
+jobs:
+  push-testing-image:
+    name: Push testing image to ECR
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Assume AWS role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.DEV_GH_ACTIONS_ROLE_ARN }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@main
+        with:
+          cosign-release: v1.9.0
+      - name: Build, tag, and push testing image to ECR
+        env:
+          CONTAINER_SIGN_KMS_KEY: ${{ secrets.DEV_CONTAINER_SIGN_KMS_KEY }}
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.DEV_ECR_REPOSITORY }}
+          IMAGE_TAG: latest
+        run: |
+          docker build -f integration_tests/Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          cosign sign --key awskms:///${CONTAINER_SIGN_KMS_KEY} $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
