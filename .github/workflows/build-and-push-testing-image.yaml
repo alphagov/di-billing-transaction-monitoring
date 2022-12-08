@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '*'
   workflow_dispatch:
     branches:
-      - BTM-307-run-tests-in-pipeline
+      - '*'
 
 env:
   AWS_REGION: eu-west-2
