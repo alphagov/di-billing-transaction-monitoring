@@ -1,4 +1,4 @@
-name: Build and push testing image to ECR
+name: Build and push testing image
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
 
 jobs:
   push-testing-image:
-    name: Build and push testing image to ECR
+    name: Build and push testing image
     permissions:
       id-token: write
       contents: read
