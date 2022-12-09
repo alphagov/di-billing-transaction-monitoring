@@ -49,4 +49,10 @@ WORKDIR /test-app/integration_tests
 RUN mv ./run-tests.sh /run-tests.sh
 RUN chmod +x /run-tests.sh
 
+# To run unit-tests for starters
+WORKDIR /test-app
+COPY jest.config.cjs ./
+COPY test-helpers ./test-helpers
+COPY src ./src
+
 ENTRYPOINT ["/run-tests.sh"]

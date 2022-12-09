@@ -10,7 +10,8 @@
 # in the Dockerfile.
 cd /test-app || exit 1
 
-npm run test:integration
+#npm run test:integration
+npm run test
 
 TESTS_EXIT_CODE=$?
 
