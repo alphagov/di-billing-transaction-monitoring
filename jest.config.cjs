@@ -6,4 +6,14 @@ module.exports = {
         "^.+\\.ts?$":"ts-jest"
     },
     collectCoverage: true,
+    reporters: [
+        "default",
+        [
+            "jest-junit",
+            {
+                outputDirectory: "reports",
+                outputName: "testReport.xml",
+            },
+        ],
+    ]
 }
