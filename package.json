@@ -54,7 +54,7 @@
     "test": "jest",
     "clean:allureFolders": "rm -R -f allure-reports/* && rm -R -f allure-results/*",
     "beforeIntTest": "npm run clean:allureFolders",
-    "test:integration": "jest --config jest.integration.config.ts",
+    "test:integration": "jest --config jest.integration.config.ts -i",
     "test:integration:local": "jest --setupFiles=./integration_tests/setEnvVars.ts --testPathIgnorePatterns athena-query-tests s3-vat-tests --config jest.integration.config.ts",
     "build": "webpack",
     "lint": "eslint . --fix",

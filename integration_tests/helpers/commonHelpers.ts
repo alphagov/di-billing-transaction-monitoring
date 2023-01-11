@@ -27,6 +27,11 @@ export enum TimeStamps {
   CURRENT_TIME,
 }
 
+export enum TableNames {
+  BILLING_TRANSACTION_CURATED = "btm_billing_and_transactions_curated",
+  TRANSACTION_CURATED = "btm_transactions_curated",
+}
+
 export const eventTimeStamp = {
   [TimeStamps.THIS_TIME_LAST_YEAR]: thisTimeLastYear(),
   [TimeStamps.CURRENT_TIME]: validTimestamp(),

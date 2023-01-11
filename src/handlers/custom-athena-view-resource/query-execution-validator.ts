@@ -32,7 +32,7 @@ export class QueryExecutionValidator {
         const baseErrorMessage = "Query execution failed";
 
         const athenaErrorMessage =
-          queryExecution?.Status?.AthenaError?.ErrorMessage;
+          JSON.stringify(queryExecution?.Status);
 
         const errorMessage =
           athenaErrorMessage === undefined

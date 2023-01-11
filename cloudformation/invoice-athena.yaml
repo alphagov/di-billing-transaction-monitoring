@@ -38,18 +38,11 @@ Resources:
           - ExpirationInDays: 7
             Status: Enabled
 
-  InvoiceDB:
-    Type: AWS::Glue::Database
-    Properties:
-      CatalogId: !Ref AWS::AccountId
-      DatabaseInput:
-        Name: !Sub ${AWS::StackName}-invoices
-
   InvoiceLineItemTable:
     Type: AWS::Glue::Table
     Properties:
       CatalogId: !Ref AWS::AccountId
-      DatabaseName: !Ref InvoiceDB
+      DatabaseName: !Ref CalculationsDB
       TableInput:
         Name: btm_billing_standardised
         TableType: EXTERNAL_TABLE
@@ -102,7 +95,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CustomAthenaViewResourceFunction.Arn
       View:
-        Database: !Ref InvoiceDB
+        Database: !Ref CalculationsDB
         Name: btm_billing_curated
         Query: |
           SELECT 

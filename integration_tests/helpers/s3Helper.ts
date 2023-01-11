@@ -69,8 +69,8 @@ const deleteDirectoryRecursiveInS3 = async (
   prefix?: string
 ): Promise<DeleteObjectCommandOutput[]> => {
   const result = await getS3ItemsList(bucketName, prefix);
-  if (result.Contents == null) {
-    throw new Error("No files found to delete");
+  if (result.Contents === null || result.Contents === undefined) {
+   return []
   }
 
   return await Promise.all(

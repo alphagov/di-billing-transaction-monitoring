@@ -201,6 +201,39 @@ Resources:
 
         Workgroup: !Ref AthenaTransactionWorkgroup
 
+  BillingAndTransactionsCuratedView:
+    Type: Custom::AthenaView
+    DependsOn: TransactionsCuratedView
+    Properties:
+      ServiceToken: !GetAtt CustomAthenaViewResourceFunction.Arn
+      View:
+        Database: !Ref CalculationsDB
+        Name: btm_billing_and_transactions_curated
+        Query: |
+          SELECT 
+              COALESCE(invoice.vendor_name,txn.vendor_name)         AS vendor_name,
+              COALESCE(invoice.service_name,txn.service_name)       AS service_name,
+              COALESCE(invoice.year,txn.year)                       AS year,
+              COALESCE(invoice.month,txn.month)                     AS month,
+              COALESCE(invoice.price,0)-COALESCE(txn.price,0)       AS price_difference,
+              COALESCE(invoice.quantity,0)-COALESCE(txn.quantity,0) AS quantity_difference,
+              (CASE WHEN COALESCE(txn.price,0) = 0 then null else 100*(COALESCE(invoice.price,0)-txn.price)/txn.price END)
+                                                                    AS price_difference_percentage,
+              (CASE WHEN COALESCE(txn.quantity,0) = 0 then null else 100*(COALESCE(invoice.quantity,0)-txn.quantity)/txn.quantity END)
+                                                                    AS quantity_difference_percentage,
+              invoice.price                                         AS billing_price,
+              invoice.quantity                                      AS billing_quantity,
+              txn.price                                             AS transaction_price,
+              txn.quantity                                          AS transaction_quantity
+          FROM btm_transactions_curated txn
+          FULL JOIN btm_billing_curated invoice ON (
+              txn.vendor_name=invoice.vendor_name AND
+              txn.service_name=invoice.service_name AND
+              txn.year=invoice.year AND
+              txn.month=invoice.month
+          )
+        Workgroup: !Ref AthenaTransactionWorkgroup
+
   AthenaTransactionWorkgroup:
     Type: AWS::Athena::WorkGroup
     Properties:

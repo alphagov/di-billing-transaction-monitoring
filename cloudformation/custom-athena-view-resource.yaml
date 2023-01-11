@@ -28,6 +28,7 @@ Resources:
                 - glue:DeleteTable
                 - glue:GetTable
                 - glue:UpdateTable
+                - glue:GetDatabases
               Resource: !Sub arn:aws:glue:${AWS::Region}:${AWS::AccountId}:*
             - Effect: Allow
               Action:
