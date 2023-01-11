@@ -68,8 +68,8 @@ Resources:
       Environment:
         Variables:
           # checkov:skip=CKV_AWS_173: These environment variables do not require encryption.
-          STORAGE_BUCKET: !Ref StorageBucket
-          INVOICES_FOLDER: btm_billing_standardised
+          DESTINATION_BUCKET: !Ref StorageBucket
+          DESTINATION_FOLDER: btm_billing_standardised
           LOCAL_ENDPOINT:
             !If [IsLocal, 'http://s3.localhost.localstack.cloud:4566', '']
       Events:
@@ -101,6 +101,7 @@ Resources:
                 - 's3:ListBucket'
                 - 's3:PutObject'
               Resource:
+                - !Join ['/', [!GetAtt RawInvoiceTextractDataBucket.Arn, '*']]
                 - !Join ['/', [!GetAtt StorageBucket.Arn, '*']]
       ReservedConcurrentExecutions: 10
 

@@ -1,6 +1,14 @@
-export function formatDate(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = ("0" + String(date.getUTCMonth() + 1)).slice(-2);
-  const day = ("0" + String(date.getUTCDate())).slice(-2);
-  return `${year}-${month}-${day}`;
-}
+export const formatDate = (date: Date): string =>
+  formatYearMonthDay(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    date.getUTCDate()
+  );
+
+export const formatYearMonthDay = (
+  year: number,
+  month: number,
+  day: number
+): string => `${year}-${padZero(month)}-${padZero(day)}`;
+
+export const padZero = (number: number): string => `0${number}`.slice(-2);

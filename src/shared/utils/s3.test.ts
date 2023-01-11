@@ -4,8 +4,16 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   CopyObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
-import { deleteS3, moveS3, moveToFolderS3, putS3, putTextS3 } from "./s3";
+import {
+  deleteS3,
+  fetchS3,
+  moveS3,
+  moveToFolderS3,
+  putS3,
+  putTextS3,
+} from "./s3";
 
 let s3Mock: ReturnType<typeof mockClient>;
 
@@ -178,6 +186,35 @@ test("Move object to folder", async () => {
     CopySource: `${bucket}/${key}`,
   });
   expect(s3Mock.calls()[1].firstArg.input).toEqual({
+    Key: key,
+    Bucket: bucket,
+  });
+});
+
+test("Fetch object with callback error", async () => {
+  s3Mock.on(GetObjectCommand).rejects("An error");
+
+  await expect(fetchS3(bucket, key)).rejects.toMatchObject({
+    message: "An error",
+  });
+  expect(s3Mock.calls()[0].firstArg.input).toEqual({
+    Key: key,
+    Bucket: bucket,
+  });
+});
+
+test("Fetch object without callback error", async () => {
+  const mockedObjectBodyString = "mocked object body string";
+  s3Mock.on(GetObjectCommand).resolves({
+    Body: {
+      transformToString: () => mockedObjectBodyString,
+    },
+  } as any);
+
+  const result = await fetchS3(bucket, key);
+
+  expect(result).toBe(mockedObjectBodyString);
+  expect(s3Mock.calls()[0].firstArg.input).toEqual({
     Key: key,
     Bucket: bucket,
   });

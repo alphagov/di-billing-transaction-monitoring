@@ -5,6 +5,7 @@ import {
   CopyObjectCommand,
   ServiceInputTypes,
   ServiceOutputTypes,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import type { Command, SmithyConfiguration } from "@aws-sdk/smithy-client";
 
@@ -20,6 +21,19 @@ export async function deleteS3(bucket: string, key: string): Promise<void> {
   });
 
   await send(deleteCommand);
+}
+
+export async function fetchS3(
+  bucket: string,
+  key: string
+): Promise<string | undefined> {
+  const getCommand = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  });
+
+  const data = await send(getCommand);
+  return await data.Body?.transformToString();
 }
 
 export async function moveS3(
@@ -70,11 +84,12 @@ export async function putTextS3(
 
 const send = async <T extends ServiceInputTypes, U extends ServiceOutputTypes>(
   command: Command<T, U, SmithyConfiguration<{}>>
-): Promise<void> =>
+): Promise<U> =>
   await s3
     .send(command)
     .then((data) => {
       console.log(data);
+      return data;
     })
     .catch((err) => {
       console.log(err, err.stack);
