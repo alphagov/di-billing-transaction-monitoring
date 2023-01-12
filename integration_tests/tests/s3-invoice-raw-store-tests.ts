@@ -5,11 +5,13 @@ import {
   getS3Object,
   putObjectToS3,
   S3Object,
+  BillingStandardised,
 } from "../helpers/s3Helper";
 import path from "path";
 import fs from "fs";
 import { resourcePrefix } from "../helpers/envHelper";
-import { waitForTrue } from "../helpers/commonHelpers";
+import { parseStrToJson, regexToRemoveSpecialChar, waitForTrue } from "../helpers/commonHelpers";
+
 import {
   makeMockInvoicePDF,
   randomInvoice,
@@ -18,14 +20,15 @@ import {
 
 const prefix = resourcePrefix();
 
-describe("\n Happy path S3 raw-invoice-pdf and raw-invoice-textract-data bucket test\n", () => {
-  test("raw-invoice-textract-data bucket should contain textract data file for uploaded valid pdf file in raw-invoice-pdf bucket and should move the original raw invoice to successful folder in s3 raw-invoice-pdf bucket", async () => {
+describe("\n Happy path - Upload valid mock invoice pdf to the raw invoice pdf bucket test\n", () => {
+  test("raw-invoice-textract-data and storage buckets should contain textracted and standardised data file for uploaded valid pdf file in raw-invoice-pdf bucket and should move the original raw invoice to successful folder in s3 raw-invoice-pdf bucket", async () => {
     const testStartTime = new Date();
     const invoice = randomInvoice();
+    const storageBucket=`${prefix}-storage`
+    const standardisedFolderPrefix='btm_billing_standardised'
     const { bucketName, path } = await makeMockInvoicePDF(writeInvoiceToS3)(
       invoice
     );
-
     const checkRawPdfFileExists = await checkIfS3ObjectExists({
       bucket: bucketName,
       key: path,
@@ -38,11 +41,9 @@ describe("\n Happy path S3 raw-invoice-pdf and raw-invoice-textract-data bucket 
         const result = await getS3ItemsList(
           `${prefix}-raw-invoice-textract-data`
         );
-
         if (result.Contents === undefined) {
           return false;
         }
-
         const s3ContentsFilteredByTestStartTime = result.Contents?.filter(
           (item) => {
             return (
@@ -51,25 +52,103 @@ describe("\n Happy path S3 raw-invoice-pdf and raw-invoice-textract-data bucket 
             );
           }
         );
-        console.log("Filtered contents:", s3ContentsFilteredByTestStartTime);
+        console.log("Raw-invoice-Textract:", s3ContentsFilteredByTestStartTime);
+        
         if (s3ContentsFilteredByTestStartTime.length === 0) {
           return false;
         }
-        const key = String(s3ContentsFilteredByTestStartTime[0].Key);
-        const fileContents = await getS3Object({
-          bucket: `${prefix}-raw-invoice-textract-data`,
-          key,
-        });
+
+        let fileContents: string | undefined = "";
+
+        for (let i = 0; i < s3ContentsFilteredByTestStartTime.length; i++) {
+          const key = String(s3ContentsFilteredByTestStartTime[i].Key);
+          fileContents = await getS3Object({
+            bucket: `${prefix}-raw-invoice-textract-data`,
+            key,
+          });
+        }
         return fileContents?.includes(invoice.invoiceNumber) ?? false;
       };
 
     const textractFilteredObject = await waitForTrue(
       checkTextractDataFileContainsStringFromOriginalPdf,
       1000,
-      25000
+      30000
     );
     console.log(textractFilteredObject);
     expect(textractFilteredObject).toBeTruthy();
+
+    const checkStandardisedFileContainsStringFromOriginalPdf =
+      async (): Promise<boolean> => {
+        const result = await getS3ItemsList(
+          storageBucket,
+          standardisedFolderPrefix
+        );
+
+        if (result.Contents === undefined) {
+          return false;
+        }
+
+        const standardisedContentsFilteredByTestStartTime = result.Contents?.filter(
+          (item) => {
+            return (
+              item.LastModified !== undefined &&
+              item.LastModified >= testStartTime
+            );
+          }
+        );
+        console.log(
+          "Standardised folder filtered contents:",
+          standardisedContentsFilteredByTestStartTime
+        );
+        if (standardisedContentsFilteredByTestStartTime.length === 0) {
+          return false;
+        }
+        let standardisedFileContents: string | undefined = "";
+
+        for (let i = 0; i < standardisedContentsFilteredByTestStartTime.length; i++) {
+          const key = String(standardisedContentsFilteredByTestStartTime[i].Key);
+          standardisedFileContents = await getS3Object({
+            bucket: storageBucket,
+            key,
+          });
+        }
+        if (standardisedFileContents === undefined) {
+          return false;
+        }
+        const standardisedFileFormattedContents = JSON.stringify(
+          standardisedFileContents
+        );
+        const formattedFileContents = regexToRemoveSpecialChar(
+          standardisedFileFormattedContents
+        );
+        const standardisedFileContents2Json = parseStrToJson(
+          formattedFileContents
+        );
+        const standardisedFileContents2JsonArray: BillingStandardised[] =
+          JSON.parse("[" + String(standardisedFileContents2Json) + "]");
+          
+        for (let i = 0; i < standardisedFileContents2JsonArray.length; i++) {
+          expect(
+            standardisedFileContents2JsonArray[i].invoice_receipt_id
+          ).toEqual(invoice.invoiceNumber);
+          expect(
+            standardisedFileContents2JsonArray[i].invoice_receipt_date
+          ).toEqual(invoice.date.toISOString().slice(0, 10));
+          expect(
+            Number(standardisedFileContents2JsonArray[i].total).toFixed(2)
+          ).toEqual(invoice.getTotal().toFixed(2));
+        }
+        return true;
+      };
+
+    const standardisedFilteredObject = await waitForTrue(
+      checkStandardisedFileContainsStringFromOriginalPdf,
+      1000,
+      25000
+    );
+    console.log(standardisedFilteredObject);
+    expect(standardisedFilteredObject).toBeTruthy();
 
     const isFileMovedToSuccessfulFolder = async (): Promise<boolean> => {
       const result = await getS3ItemsList(bucketName, "successful");
@@ -78,6 +157,7 @@ describe("\n Happy path S3 raw-invoice-pdf and raw-invoice-textract-data bucket 
       }
       return result.Contents.some((t) => t.Key?.includes(path));
     };
+
     const originalFileExistsInSuccessfulFolder = await waitForTrue(
       isFileMovedToSuccessfulFolder,
       1000,
@@ -92,14 +172,14 @@ describe("\n Happy path S3 raw-invoice-pdf and raw-invoice-textract-data bucket 
   });
 });
 
-describe("\n Unappy path S3 raw-invoice-pdf and raw-invoice-textract-data bucket test\n", () => {
+describe("\n Unappy path - Upload invalid pdf to the raw invoice pdf bucket test\n", () => {
   const uniqueString = Math.random().toString(36).substring(2, 7);
   const rawInvoice: S3Object = {
     bucket: `${prefix}-raw-invoice-pdf`,
     key: `raw-Invoice-${uniqueString}-validFile.pdf`,
   };
 
-  test("raw-invoice-textract-data bucket should not contain textract data file for uploaded invalid pdf file in raw-invoice-pdf bucket and should move the original raw invoice to failed folder in s3 raw-invoice-pdf bucket ", async () => {
+  test("should move the original raw invoice to failed folder in s3 raw-invoice-pdf bucket upon uploading the invalid pdf file ", async () => {
     const file = "../payloads/invalidFiletoTestTextractFailure.pdf";
     const filename = path.join(__dirname, file);
     const fileStream = fs.createReadStream(filename);
@@ -132,3 +212,4 @@ describe("\n Unappy path S3 raw-invoice-pdf and raw-invoice-textract-data bucket
     console.log("deleted the file from s3");
   });
 });
+

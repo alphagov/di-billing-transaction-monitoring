@@ -13,6 +13,7 @@ import {
   PutObjectCommandInput,
   PutObjectCommandOutput,
 } from "@aws-sdk/client-s3";
+import { parseStrToJson, regexToRemoveSpecialChar } from "./commonHelpers";
 
 interface S3Object {
   bucket: string;
@@ -137,7 +138,7 @@ const getAllObjectsFromS3 = async (
   return content;
 };
 
-interface S3BillingStandardised {
+export interface BillingStandardised {
   invoice_receipt_id: string;
   vendor_name: string;
   total: number;
@@ -154,18 +155,14 @@ interface S3BillingStandardised {
   price: number;
 }
 
-const s3GetObjectsToArray = async (
+ const s3GetObjectsToJson = async (
   bucketName: string,
   folderPrefix: string
-): Promise<S3BillingStandardised[]> => {
+): Promise<BillingStandardised[]> => {
   const s3Response = await getAllObjectsFromS3(bucketName, folderPrefix);
   const convertS3Repsonse2Str = JSON.stringify(s3Response);
-  const formatS3Str = convertS3Repsonse2Str
-    .replace(/:[^"0-9.]*([0-9.]+)/g, ':\\"$1\\"') // converts digits to string for parsing
-    .replace(/\\n|'/g, "") // removes //n character , single quotes
-    .replace(/}{/g, "},{"); // replace comma in between }{ brackets
-  const data = JSON.parse(formatS3Str);
-  return JSON.parse("[" + String(data["0"]) + "]");
+  const formatS3Str = regexToRemoveSpecialChar(convertS3Repsonse2Str)
+  return parseStrToJson(formatS3Str)
 };
 
 export {
@@ -178,5 +175,5 @@ export {
   deleteDirectoryRecursiveInS3,
   checkIfS3ObjectExists,
   getAllObjectsFromS3,
-  s3GetObjectsToArray,
+  s3GetObjectsToJson,
 };

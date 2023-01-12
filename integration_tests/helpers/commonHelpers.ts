@@ -130,3 +130,16 @@ export const deleteS3Events = async (
   console.log("deleted the files from s3");
   return true;
 };
+
+export const regexToRemoveSpecialChar = (str:string): string => {
+  const formatS3Str = str
+    .replace(/:[^"0-9.]*([0-9.]+)/g, ':\\"$1\\"') // converts digits to string for parsing
+    .replace(/\\n|'/g, "") // removes //n character , single quotes
+    .replace(/}{/g, "},{"); // replace comma in between }{ brackets
+     return formatS3Str
+}
+
+export const parseStrToJson = (str:string): [] => {
+  return JSON.parse(str);
+  
+}

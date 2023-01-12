@@ -40,7 +40,7 @@ const randomAddress = (): string[] => {
 
 const randomVendor = (): Vendor => {
   return {
-    name: randomName(),
+    name: "Client Three",
     vatNumber: `GB${Math.floor(Math.random() * 1_000_000_000)}`,
     address: randomAddress(),
   };
